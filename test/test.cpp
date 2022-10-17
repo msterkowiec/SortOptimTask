@@ -20,7 +20,7 @@ std::string CreateRandomString(size_t len)
     return s; // RVO
 }
 
-void Test(const std::string& s)
+void RunTest(const std::string& s)
 {
     try
     {
@@ -87,12 +87,12 @@ TEST(SortOptimTask, Test1MB)
 {
    auto s = CreateRandomString(1024 * 1024);
   
-   Test(s);  
+   RunTest(s);  
 }
 
 TEST(SortOptimTask, Test16MB)
 {
    auto s = CreateRandomString(16 * 1024 * 1024);
   
-   Test(s);  
+   RunTest(s);  
 }
