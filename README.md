@@ -6,7 +6,7 @@ Complexity is O(n log(n))  (log with base 2) although multithreading makes is sl
 
 Similarly using a hash map (with m elements) reduces computational complexity to O(m n/m log(n/m)) which is O(n log(n/m))
 
-Because m>>t (and we also make use of multithreading) we may expect quite significant gain over multithreaded std::sort.
+Because m > t (practically even  m >> t; and we also make use of multithreading) we may expect quite significant gain over multithreaded std::sort.
 However the initial version outperforms it now much, 10-20% - anyway the more elements, the higher gain, for example:
 
     Test with string length 792723456 has just started...
