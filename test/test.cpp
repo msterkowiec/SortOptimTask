@@ -55,7 +55,7 @@ void Test(const std::string& s)
             EXPECT_FALSE(true); 
             return;
         }
-        for (size_t i = 1; i < LEN; ++i)
+        for (size_t i = 1; i < s.size(); ++i)
         {
             ret = hashMap->getNext(ret.second);
             if (vecPtr[i] != ret.first)
