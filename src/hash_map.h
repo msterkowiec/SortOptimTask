@@ -66,7 +66,7 @@ public:
         array_for_placement_new_ = new const char* [array_for_placement_new_size_];
     }
     HashMap(const HashMap& o) = delete;
-    //HashMap(HashMap&& o) = delete; // we can move - no need to delete this version of constructor
+    HashMap(HashMap&& o) = delete;
     HashMap& operator = (const HashMap& o) = delete;
     ~HashMap() // no need for virtual destructor
     {
@@ -80,17 +80,6 @@ public:
                 if (hash_table_[i].array < array_for_placement_new_ || hash_table_[i].array >= array_for_placement_new_ + array_for_placement_new_size_)
                     delete[] hash_table_[i].array;        
     }
-    __FORCEINLINE__ void add(const char* str)
-    {
-        auto hash = calcHash(str);
-        assert(hash < LEN);
-
-        auto& elem = hash_table_[hash];
-        if (elem.size == elem.capacity) [[unlikely]]
-            extend(hash);
-
-        elem.array[elem.size++] = str;        
-    }    
     void addWithSubstrings(const std::string& s)
     {
         const char* str = s.c_str(); // make sure we have a null terminated string to avoid data race (when more than one thread at a time want to make it null-terminated, possibly also reallocating)
@@ -165,31 +154,6 @@ private:
         }
     }
     
-    void extend(hash_t hash)
-    {
-        auto& elem = hash_table_[hash];
-        assert(elem.size == elem.capacity);
-
-        size_t buf_left = array_for_placement_new_size_ - array_for_placement_new_size_used_;
-        size_t buf_needed = elem.size * 2;
-        if (buf_needed <= buf_left)
-        {
-            const char** ptr = array_for_placement_new_ + array_for_placement_new_size_used_;
-            array_for_placement_new_size_used_ += buf_needed;
-            memcpy(ptr, elem.array, elem.size * sizeof(const char*));
-            assert(elem.array >= array_for_placement_new_ && elem.array < array_for_placement_new_ + array_for_placement_new_size_);
-            elem.array = ptr;
-        }
-        else
-        {
-            const char** ptr = new const char* [buf_needed];
-            memcpy(ptr, elem.array, elem.size * sizeof(const char*));
-            if (elem.array < array_for_placement_new_ || elem.array >= array_for_placement_new_ + array_for_placement_new_size_)
-                delete[] elem.array;
-            elem.array = ptr;
-        }
-        elem.capacity = buf_needed;
-    }
     void sort_thread(size_t first_idx, size_t last_idx, std::atomic<size_t>& threads_complete)
     {
         for (size_t i = first_idx; i <= last_idx; ++i)
