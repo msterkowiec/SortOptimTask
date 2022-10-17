@@ -1,4 +1,4 @@
-[![CMake-GCC](https://github.com/msterkowiec/SortOptimTask/actions/workflows/cmake-gcc.yml/badge.svg?branch=main)](https://github.com/msterkowiec/SortOptimTask/actions/workflows/cmake-gcc.yml)
+[![CMake-GCC](https://github.com/msterkowiec/SortOptimTask/actions/workflows/cmake-gcc.yaml/badge.svg?branch=main)](https://github.com/msterkowiec/SortOptimTask/actions/workflows/cmake-gcc.yaml)
 
 SortOptimTask
 
