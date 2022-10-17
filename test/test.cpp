@@ -29,8 +29,7 @@ void RunTest(const std::string& s)
         // Sort (hash map) :
         auto start = std::chrono::steady_clock::now();
         std::unique_ptr<HashMap> hashMap(new HashMap(s.size()));
-        for (size_t i = 0; i < s.size(); ++i)
-            hashMap->add(&s[i]);
+        hashMap->addWithSubstrings(s);
         std::cout << "Adding elements to hash_map (single thread) took " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count() << " millisecond(s)\n";
         hashMap->sort();
         std::cout << "Multithreaded sort with hash map took " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count() << " millisecond(s)\n";
