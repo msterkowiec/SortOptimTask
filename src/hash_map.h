@@ -7,6 +7,7 @@
 #include <cassert>
 #include <thread>
 #include <mutex>
+#include <atomic>
 #include <string.h>
 
 #  if defined(_MSC_VER)
