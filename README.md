@@ -24,3 +24,14 @@ Rather thinking why this algorithm only slightly outperforms multithreaded std::
 Now it looks like this first long single-threaded phase ("Adding elements to hash_map (single thread) took 66350 millisecond(s)") requires change - I intend to split it into two multithreaded parts:
 1) calculate all posssible hashes and get their counters (e.g. memory allocation will then be much easier)
 2) add them to hash map - also in a multithreaded way
+
+-----------------
+
+Indeed, the enhancement (mutithreaded processing extended to the initial phase) gave significant speed improvement:
+
+    Test with string length 792723456 has just started...
+    Adding elements to hash_map took 16841 millisecond(s)
+    Multithreaded sort with hash map took 42046 millisecond(s)  <---- -64% faster than multithreaded std::sort
+    Adding elements to array took 8913 millisecond(s)
+    Simple multithreaded sort took 115742 millisecond(s) <----
+    Full match
