@@ -7,6 +7,7 @@
 #include <cassert>
 #include <thread>
 #include <mutex>
+#include <string.h>
 
 #  if defined(_MSC_VER)
 #    define __FORCEINLINE__ __forceinline
