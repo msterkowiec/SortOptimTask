@@ -18,7 +18,7 @@ FetchContent_MakeAvailable(googletest)
 enable_testing()
 
 include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
-include_directories(${SOURCEOPTIMTASK_SOURCE_DIR}/src)
+include_directories(${SortOptimTask_SOURCE_DIR}/src)
 include(GoogleTest)
 
 add_executable(SortOptimTaskTests "test.cpp") 
