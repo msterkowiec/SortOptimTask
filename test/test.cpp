@@ -1,4 +1,5 @@
 #include "hash_map.h"
+#include <gtest/gtest.h>
 
 std::string CreateRandomString(size_t len)
 {
