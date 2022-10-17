@@ -42,7 +42,11 @@ void Test(const std::string& s)
             vecPtr[i] = &s[i];
         std::cout << "Adding elements to array took " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count() << " millisecond(s)\n";
 
+        #if (__cplusplus >= 201703L || _MSVC_LANG >= 201703L)
         std::sort(std::execution::par_unseq, vecPtr.begin(), vecPtr.end(), CStrComparator());
+        #else
+        std::sort(vecPtr.begin(), vecPtr.end(), CStrComparator());
+        #endif
 
         std::cout << "Simple multithreaded sort took " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count() << " millisecond(s)\n";
 
