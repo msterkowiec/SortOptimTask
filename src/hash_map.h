@@ -34,19 +34,24 @@ class HashMap
     {
         using HashElemSizeT = unsigned int;
 
-        HashElemSizeT size;
+        std::atomic<HashElemSizeT> size;
         HashElemSizeT capacity;
         const char** array;
+        HashMapElem(){
+            size = 0;
+            capacity = 0;
+            array = nullptr;
+        }
         HashMapElem(const char** arr, HashElemSizeT size, HashElemSizeT capacity) : array(arr), size(size), capacity(capacity){
         }
     };
+
 
     static const size_t LEN = 64 * 64 * 64; 
     static const size_t CHARS_IN_HASH = 3;
     using hash_t = unsigned int;
 
-    std::vector<HashMapElem> hash_table_;
-    //HashMapElem hash_table_[LEN];
+    HashMapElem hash_table_[LEN];
 
     const char** array_for_placement_new_;
     size_t array_for_placement_new_size_;
@@ -55,22 +60,10 @@ class HashMap
 public:
     HashMap(size_t estimatedMaxNumOfElements = 0)
     {
-        hash_table_.reserve(LEN);
-
         size_t avg_elements_per_bucket = estimatedMaxNumOfElements / LEN;
-        array_for_placement_new_size_ = estimatedMaxNumOfElements * 3;
+        array_for_placement_new_size_ = estimatedMaxNumOfElements; // old version required: *3;
         array_for_placement_new_size_used_ = 0;
         array_for_placement_new_ = new const char* [array_for_placement_new_size_];
-        auto ptr = array_for_placement_new_;
-        for (size_t i = 0; i < LEN; ++i)
-        {
-            hash_table_.emplace_back(ptr, 0, avg_elements_per_bucket * 2);
-            //hash_table_[i].set(ptr, 0, avg_elements_per_bucket * 2);
-            ptr += avg_elements_per_bucket * 2;
-            assert(ptr < array_for_placement_new_ + array_for_placement_new_size_);             
-        }
-        array_for_placement_new_size_used_ = ptr - array_for_placement_new_;
-
     }
     HashMap(const HashMap& o) = delete;
     //HashMap(HashMap&& o) = delete; // we can move - no need to delete this version of constructor
@@ -78,21 +71,17 @@ public:
     ~HashMap() // no need for virtual destructor
     {
         clear();
-        for (size_t i = 0; i < LEN; ++i)
-            if (hash_table_[i].array < array_for_placement_new_ || hash_table_[i].array >= array_for_placement_new_ + array_for_placement_new_size_)
-                delete[] hash_table_[i].array;
     }
     void clear()
     {
         delete[] array_for_placement_new_;
+        for (size_t i = 0; i < LEN; ++i)
+            if (hash_table_[i].array != nullptr)
+                if (hash_table_[i].array < array_for_placement_new_ || hash_table_[i].array >= array_for_placement_new_ + array_for_placement_new_size_)
+                    delete[] hash_table_[i].array;        
     }
     __FORCEINLINE__ void add(const char* str)
     {
-        //
-        // TODO: Maybe do it in two passes? First calculate (in multiple threads) all the hashes (and their counters - how many times a gives hash appeated)
-        // and then, also in multiple threads, process these hashes - every thread different hashes - this will let avoid need for thread synchronizion
-        // 
-
         auto hash = calcHash(str);
         assert(hash < LEN);
 
@@ -102,7 +91,80 @@ public:
 
         elem.array[elem.size++] = str;        
     }    
+    void addWithSubstrings(const std::string& s)
+    {
+        const char* str = s.c_str(); // make sure we have a null terminated string to avoid data race (when more than one thread at a time want to make it null-terminated, possibly also reallocating)
+        std::vector<HashMapElem::HashElemSizeT> hashes(s.size());
+        std::vector<std::atomic<size_t>> frequencies(LEN);
+        
+        // Phase 1: calc hashes and their frequencies:
+        auto num_threads = std::thread::hardware_concurrency();
+        std::vector<std::thread> threadCalcHashes;
+        threadCalcHashes.reserve(num_threads);
+        size_t first_idx, last_idx;
+        for (size_t i = 0; i < num_threads; ++i)
+        {
+            first_idx = i * s.size() / num_threads;
+            last_idx = (i + 1) * s.size() / num_threads - 1;
+            threadCalcHashes.emplace_back(&HashMap::addWithSubstringsThread, this, s, first_idx, last_idx, std::ref(hashes), std::ref(frequencies));
+        }
+        for (size_t i = 0; i < num_threads; ++i)
+            threadCalcHashes[i].join();
+
+        // Phase 2 : allocate memory for hash table data:
+
+        const char** ptr = array_for_placement_new_ + array_for_placement_new_size_used_;
+        #if !defined(NDEBUG) || defined(_DEBUG)
+        size_t buf_left = array_for_placement_new_size_ - array_for_placement_new_size_used_;
+        #endif
+        for (size_t i = 0; i < LEN; ++i)
+            if (frequencies[i] > 0)
+            {            
+                auto& elem = hash_table_[i];
+                elem.capacity = frequencies[i];
+                assert(buf_left >= elem.capacity);
+                elem.array = ptr;
+                array_for_placement_new_size_used_ += elem.capacity;
+                ptr += elem.capacity;
+                #if !defined(NDEBUG) || defined(_DEBUG)
+                buf_left -= elem.capacity;
+                #endif
+            }
+
+        // Phase 3 : add hashes to hash map:
+        
+        std::vector<std::thread> threadAddHashesToHashMap;
+        for (size_t i = 0; i < num_threads; ++i)
+        {
+            first_idx = i * hashes.size() / num_threads;
+            last_idx = (i + 1) * hashes.size() / num_threads - 1;
+            threadAddHashesToHashMap.emplace_back(&HashMap::addHashesToHashMapThread, this, str, first_idx, last_idx, std::ref(hashes), std::ref(frequencies));
+        }
+        for (size_t i = 0; i < num_threads; ++i)
+            threadAddHashesToHashMap[i].join();
+    }
 private:
+    void addWithSubstringsThread(const std::string& s, size_t first_idx, size_t last_idx, std::vector<HashMapElem::HashElemSizeT>& hashes, std::vector<std::atomic<size_t>>& frequencies)    
+    {        
+        const char* str = s.c_str();
+        for (size_t i = first_idx; i <= last_idx; ++i)
+        {
+            auto hash = calcHash(str + i);
+            assert(hash < frequencies.size());
+            ++frequencies[hash];
+            hashes[i] = hash;
+        }
+    }
+    void addHashesToHashMapThread(const char* str, size_t first_idx, size_t last_idx, std::vector<HashMapElem::HashElemSizeT>& hashes, std::vector<std::atomic<size_t>>& frequencies)
+    {
+        for (size_t i = first_idx; i <= last_idx; ++i)
+        {
+            auto& elem = hash_table_[hashes[i]];
+            assert(elem.size < elem.capacity);
+            elem.array[elem.size++] = str + i;
+        }
+    }
+    
     void extend(hash_t hash)
     {
         auto& elem = hash_table_[hash];
