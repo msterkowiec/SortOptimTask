@@ -1,3 +1,5 @@
+#include "hash_map.h"
+
 std::string CreateRandomString(size_t len)
 {
     std::mt19937 mt;
